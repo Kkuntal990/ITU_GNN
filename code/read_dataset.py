@@ -59,19 +59,31 @@ def generator(data_dir, shuffle = False):
         g = sample.get_topology_object()
 
         cap_mat = np.full((g.number_of_nodes(), g.number_of_nodes()), fill_value=None)
+        q_policy = np.full((g.number_of_nodes(), g.number_of_nodes()), fill_value=None)
 
         for node in range(g.number_of_nodes()):
+            curr = g.nodes[node]
             for adj in g[node]:
                 cap_mat[node, adj] = g[node][adj][0]['bandwidth']
-
+                try:
+                    weights = curr['schedulingWeights']
+                except:
+                    weights = [-1,-1,-1]
+                q_policy[node, adj] = np.array((curr['schedulingPolicy'], weights))
             
 
         links = np.where(np.ravel(cap_mat) != None)[0].tolist()
 
         link_capacities = (np.ravel(cap_mat)[links]).tolist()
 
+        q_policy = (np.ravel(q_policy)[links]).tolist()
+        
+        #print(links, link_capacities)
+
         ids = list(range(len(links)))
         links_id = dict(zip(links, ids))
+
+        #print(links_id)
 
         path_ids = []
         for path in paths:
@@ -94,6 +106,8 @@ def generator(data_dir, shuffle = False):
             path_indices += len(p) * [segment]
             sequ_indices += list(range(len(p)))
             segment += 1
+
+        print(len(link_indices) , len(q_policy))
 
         traffic = sample.get_traffic_matrix()
         # Remove diagonal from matrix
