@@ -27,6 +27,10 @@ from __future__ import print_function
 import tensorflow as tf
 
 
+POLICIES = {'WFQ':0, 'SP':1, 'DRR':2}
+
+
+
 class RouteNetModel(tf.keras.Model):
     """ Init method for the custom model.
 
@@ -89,7 +93,12 @@ class RouteNetModel(tf.keras.Model):
         links = f_['links']
         paths = f_['paths']
         seqs = f_['sequences']
+        ToS = f_['ToS']
+        """
+        Let's use type of queing policy of a node as 0,1,2 as {'WFQ', 'SP', 'DRR'},
+        and also insert weight of each queue of the node.
 
+        """
         # Compute the shape for the  all-zero tensor for link_state
         shape = tf.stack([
             f_['n_links'],
@@ -105,12 +114,13 @@ class RouteNetModel(tf.keras.Model):
         # Compute the shape for the  all-zero tensor for path_state
         shape = tf.stack([
             f_['n_paths'],
-            int(self.config['HYPERPARAMETERS']['path_state_dim']) - 1
+            int(self.config['HYPERPARAMETERS']['path_state_dim']) - 2
         ], axis=0)
 
         # Initialize the initial hidden state for paths
         path_state = tf.concat([
             tf.expand_dims(f_['bandwith'], axis=1),
+            tf.expand_dims(ToS, axis =1),
             tf.zeros(shape)
         ], axis=1)
 

@@ -64,6 +64,8 @@ def generator(data_dir, shuffle = False):
             for adj in g[node]:
                 cap_mat[node, adj] = g[node][adj][0]['bandwidth']
 
+            
+
         links = np.where(np.ravel(cap_mat) != None)[0].tolist()
 
         link_capacities = (np.ravel(cap_mat)[links]).tolist()
@@ -120,6 +122,7 @@ def generator(data_dir, shuffle = False):
         n_paths = len(path_ids)
         n_links = max(max(path_ids)) + 1
 
+        #print(n_links)
 
         yield {"bandwith": avg_bw, "packets": pkts_gen,
                "link_capacity": link_capacities,
@@ -159,7 +162,7 @@ def input_fn(data_dir, transform=True, repeat=True, shuffle=False):
                                         ({"bandwith": tf.float32, "packets": tf.float32,
                                           "link_capacity": tf.float32, "links": tf.int64,
                                           "paths": tf.int64, "sequences": tf.int64,
-                                          "n_links": tf.int64, "n_paths": tf.int64, "ToS": tf.int64},
+                                          "n_links": tf.int64, "n_paths": tf.int64, "ToS": tf.float32},
                                         tf.float32),
                                         ({"bandwith": tf.TensorShape([None]), "packets": tf.TensorShape([None]),
                                           "link_capacity": tf.TensorShape([None]),
@@ -167,7 +170,7 @@ def input_fn(data_dir, transform=True, repeat=True, shuffle=False):
                                           "paths": tf.TensorShape([None]),
                                           "sequences": tf.TensorShape([None]),
                                           "n_links": tf.TensorShape([]),
-                                          "n_paths": tf.TensorShape([]), "ToS": tf.TensorShape([])},
+                                          "n_paths": tf.TensorShape([]), "ToS": tf.TensorShape([None])},
                                          tf.TensorShape([None])))
     if transform:
         ds = ds.map(lambda x, y: transformation(x, y))
