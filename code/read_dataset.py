@@ -21,7 +21,35 @@ from datanetAPI import DatanetAPI
 
 
 POLICIES = {'WFQ':0, 'SP':1, 'DRR':2}
+def detect_scenario(w1,tos,policy):
+    
+    WFQ_only = True
+    Scenario = 1
+    '''Filter Scenario 1 and 2 where all links have WFQ policy'''
+    for i in policy:
+        if i!=POLICIES['WFQ']:
+            WFQ_only = False
+            break
+    '''Mark as Scenario 2 if weight-1 for any link is not 60 ''' 
+    if(WFQ_only):
+        for i in w1:
+            if i!=60:
+                Scenario=2
+                
 
+    else:
+        count = [0,0,0]
+        Scenario=3
+        for i in tos:
+            count[int(i)]+=1
+        ''' If Percentage of ToS=0 is closer to 33.3% than 10% its Scenario 4'''
+        if (count[0]/sum(count) > 0.2166):
+            Scenario=4
+    
+    return Scenario
+                
+            
+        
 def generator(data_dir, shuffle = False):
     """This function uses the provided API to read the data and returns
        and returns the different selected features.
@@ -69,11 +97,12 @@ def generator(data_dir, shuffle = False):
             curr = g.nodes[node]
             for adj in g[node]:
                 cap_mat[node, adj] = g[node][adj][0]['bandwidth']
+                q_policy[node, adj] = POLICIES[curr['schedulingPolicy']]
                 try:
                     weights = curr['schedulingWeights']
                 except:
                     continue
-                q_policy[node, adj] = POLICIES[curr['schedulingPolicy']]
+                
                 temp = weights.split(',')
                 w_1[node,adj] =  float(temp[0])
                 w_2[node,adj] =  float(temp[1])
@@ -147,15 +176,16 @@ def generator(data_dir, shuffle = False):
 
         n_paths = len(path_ids)
         n_links = max(max(path_ids)) + 1
-        
+        Scenario = detect_scenario(w_1,type_of_service,q_policy)
         #print(n_links, len(w_1))
+        
 
         yield {"bandwith": avg_bw, "packets": pkts_gen,
                "link_capacity": link_capacities,
                "links": link_indices,
                "paths": path_indices, "sequences": sequ_indices,
                "n_links": n_links, "n_paths": n_paths, "ToS": type_of_service, 
-               "Q_policy": q_policy, "w1": w_1, "w2": w_2, "w3": w_3}, delay
+               "Q_policy": q_policy, "w1": w_1, "w2": w_2, "w3": w_3 , "Scenario":Scenario}, delay
 
 
 def transformation(x, y):
