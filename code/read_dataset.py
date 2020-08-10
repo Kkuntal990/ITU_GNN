@@ -93,7 +93,7 @@ def generator(data_dir, shuffle = False):
             - n_links, n_paths
             The second element contains the source-destination delay
     """
-    final = np.genfromtxt("final1.txt")
+    final = np.genfromtxt("final2.txt")
     tool = DatanetAPI(data_dir, [], shuffle)
     it = iter(tool)
     n=0
