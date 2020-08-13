@@ -13,7 +13,7 @@ from tensorflow.python.summary.summary_iterator import summary_iterator
 # summary value tag 'loss'.  These could have been added by calling
 # `add_summary()`, passing the output of a scalar summary op created with
 # with: `tf.scalar_summary(['loss'], loss_tensor)`.
-for e in summary_iterator("20k/events.out.tfevents.1597079726 (1).4c38a3b1fc06"):
+for e in summary_iterator("10k/events.out.tfevents.1596635775.63d5a7fc86b5"):
     for v in e.summary.value:
         if v.tag == 'r-squared':
             print(e.step ,v.tag,v.simple_value)
