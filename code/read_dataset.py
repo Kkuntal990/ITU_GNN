@@ -98,6 +98,7 @@ def generator(data_dir, shuffle = False):
     it = iter(tool)
     n=0
     maxf = max(final)
+    print("Training on:" , maxf)
     for sample in it:
         ###################
         #  EXTRACT PATHS  #
@@ -259,7 +260,7 @@ def input_fn(data_dir, transform=True, repeat=True, shuffle=False):
                                           "link_capacity": tf.float32, "links": tf.int64,
                                           "paths": tf.int64, "sequences": tf.int64,
                                           "n_links": tf.int64, "n_paths": tf.int64, "ToS": tf.float32, 
-                                          "Q_policy": tf.float32,"w1": tf.float32,"w2": tf.float32,"w3": tf.float32},
+                                          "Q_policy": tf.float32,"w1": tf.float32,"w2": tf.float32,"w3": tf.float32, "Scenario": tf.int64},
                                         tf.float32),
                                         ({"bandwith": tf.TensorShape([None]), "packets": tf.TensorShape([None]),
                                           "link_capacity": tf.TensorShape([None]),
@@ -269,7 +270,7 @@ def input_fn(data_dir, transform=True, repeat=True, shuffle=False):
                                           "n_links": tf.TensorShape([]),
                                           "n_paths": tf.TensorShape([]), "ToS": tf.TensorShape([None]),
                                            "Q_policy": tf.TensorShape([None]), "w1": tf.TensorShape([None]),
-                                           "w2": tf.TensorShape([None]),"w3": tf.TensorShape([None])},
+                                           "w2": tf.TensorShape([None]),"w3": tf.TensorShape([None]), "Scenario": tf.TensorShape([])},
                                          tf.TensorShape([None])))
     if transform:
         ds = ds.map(lambda x, y: transformation(x, y))
