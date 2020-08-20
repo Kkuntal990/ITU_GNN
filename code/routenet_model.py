@@ -66,25 +66,25 @@ class RouteNetModel(tf.keras.Model):
 
         self.readout = tf.keras.Sequential([
             tf.keras.layers.Input(shape=int(self.config['HYPERPARAMETERS']['path_state_dim'])),
-            tf.keras.layers.BatchNormalization(axis=1, epsilon=1e-4, momentum=0.99),
             tf.keras.layers.Dense(int(self.config['HYPERPARAMETERS']['readout_units']),
                                   activation=tf.nn.selu,
                                   kernel_regularizer=tf.keras.regularizers.l2(
                                       float(self.config['HYPERPARAMETERS']['l2'])),
                                   ),
-            tf.keras.layers.BatchNormalization(
-                axis=1, epsilon=1e-4, momentum=0.99),
+           
 
             tf.keras.layers.Dense(int(self.config['HYPERPARAMETERS']['readout_units']),
                                   activation=tf.nn.relu,
                                   kernel_regularizer=tf.keras.regularizers.l2(
                                       float(self.config['HYPERPARAMETERS']['l2']))),
+
             tf.keras.layers.BatchNormalization(
                 axis=1, epsilon=1e-4, momentum=0.99),
-
+           
             tf.keras.layers.Dense(output_units,
                                   kernel_regularizer=tf.keras.regularizers.l2(
                                       float(self.config['HYPERPARAMETERS']['l2_2'])))
+            
         ])
 
     def call(self, inputs, training=False):
@@ -144,7 +144,9 @@ class RouteNetModel(tf.keras.Model):
             tf.expand_dims(f_['bandwith'], axis=1),
             tf.expand_dims(ToS, axis =1),
             tf.zeros(shape)
-        ], axis=1)
+        ], axis = 1)
+        
+      #  print(path_state.shape)
 
         # Iterate t times doing the message passing
         for _ in range(int(self.config['HYPERPARAMETERS']['t'])):
