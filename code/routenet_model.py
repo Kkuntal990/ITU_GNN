@@ -60,6 +60,10 @@ class RouteNetModel(tf.keras.Model):
         self.path_update = tf.keras.layers.GRUCell(int(self.config['HYPERPARAMETERS']['path_state_dim']))
 
         # Readout Neural Network. It expects as input the path states and outputs the per-path delay
+
+        #TODO: Try adding batch_norm layer in Readout function.
+
+
         self.readout = tf.keras.Sequential([
             tf.keras.layers.Input(shape=int(self.config['HYPERPARAMETERS']['path_state_dim'])),
             tf.keras.layers.Dense(int(self.config['HYPERPARAMETERS']['readout_units']),

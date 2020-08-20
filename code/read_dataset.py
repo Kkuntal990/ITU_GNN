@@ -93,24 +93,24 @@ def generator(data_dir, shuffle = False):
             - n_links, n_paths
             The second element contains the source-destination delay
     """
-    final = np.genfromtxt("final2.txt")
+    # final = np.genfromtxt("final2.txt")
     tool = DatanetAPI(data_dir, [], shuffle)
     it = iter(tool)
-    n=0
-    maxf = max(final)
-    print("Training on:" , maxf)
+    # n=0
+    # maxf = max(final)
+    # print("Training on:" , maxf)
     for sample in it:
         ###################
         #  EXTRACT PATHS  #
         ###################
-        if (n> maxf):
-            print("break")
-            break
-        if binary_search(final,n)==-1:
-            n+=1
-            continue
+        # if (n> maxf):
+        #     print("break")
+        #     break
+        # if binary_search(final,n)==-1:
+        #     n+=1
+        #     continue
     
-        n+=1
+        # n+=1
         
         routing = sample.get_routing_matrix()
 
