@@ -27,6 +27,10 @@ from __future__ import print_function
 import tensorflow as tf
 
 
+POLICIES = {'WFQ':0, 'SP':1, 'DRR':2}
+
+
+
 class RouteNetModel(tf.keras.Model):
     """ Init method for the custom model.
 
@@ -63,10 +67,12 @@ class RouteNetModel(tf.keras.Model):
                                   kernel_regularizer=tf.keras.regularizers.l2(
                                       float(self.config['HYPERPARAMETERS']['l2'])),
                                   ),
+            tf.keras.layers.Dropout(0.05),
             tf.keras.layers.Dense(int(self.config['HYPERPARAMETERS']['readout_units']),
                                   activation=tf.nn.relu,
                                   kernel_regularizer=tf.keras.regularizers.l2(
                                       float(self.config['HYPERPARAMETERS']['l2']))),
+            tf.keras.layers.Dropout(0.05),                  
             tf.keras.layers.Dense(output_units,
                                   kernel_regularizer=tf.keras.regularizers.l2(
                                       float(self.config['HYPERPARAMETERS']['l2_2'])))
@@ -89,7 +95,19 @@ class RouteNetModel(tf.keras.Model):
         links = f_['links']
         paths = f_['paths']
         seqs = f_['sequences']
+        ToS = f_['ToS']
+        q_policy  = f_['Q_policy']
+        w_1 = f_['w1']
+        w_2 = f_['w2']
+        w_3 = f_['w3']
 
+
+
+        """
+        Let's use type of queing policy of a node as 0,1,2 as {'WFQ', 'SP', 'DRR'},
+        and also insert weight of each queue of the node.
+
+        """
         # Compute the shape for the  all-zero tensor for link_state
         shape = tf.stack([
             f_['n_links'],
