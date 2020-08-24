@@ -131,6 +131,8 @@ def generator(data_dir, shuffle = False):
         w_1 = np.full((g.number_of_nodes(), g.number_of_nodes()), fill_value=0.0)
         w_2 = np.full((g.number_of_nodes(), g.number_of_nodes()), fill_value=0.0)
         w_3 = np.full((g.number_of_nodes(), g.number_of_nodes()), fill_value=0.0)
+        queue_size = np.full((g.number_of_nodes(), g.number_of_nodes(), 3),
+                      fill_value=0.0)
 
         for node in range(g.number_of_nodes()):
             curr = g.nodes[node]
@@ -145,7 +147,8 @@ def generator(data_dir, shuffle = False):
                 temp = weights.split(',')
                 w_1[node,adj] =  float(temp[0])
                 w_2[node,adj] =  float(temp[1])
-                w_3[node,adj] =  float(temp[2])
+                w_3[node, adj] = float(temp[2])
+                queue_size[node, adj] = np.array(curr['queueSizes'].split(','), dtype=float)
 
 
         links = np.where(np.ravel(cap_mat) != None)[0].tolist()
@@ -156,6 +159,8 @@ def generator(data_dir, shuffle = False):
         w_1 = (np.ravel(w_1)[links]).tolist()
         w_2 = (np.ravel(w_2)[links]).tolist()
         w_3 = (np.ravel(w_3)[links]).tolist()
+        queue_size = (np.ravel(queue_size)[links]).tolist()
+
         #print(links, link_capacities)
 
         ids = list(range(len(links)))
@@ -225,12 +230,13 @@ def generator(data_dir, shuffle = False):
         # else:
         #     count[1]+=1
 
+
         yield {"bandwith": avg_bw, "packets": pkts_gen,
                "link_capacity": link_capacities,
                "links": link_indices,"node_indices":node_indices,
                "paths": path_indices, "sequences": sequ_indices,
                "n_links": n_links, "n_paths": n_paths, "ToS": type_of_service,
-               "Q_policy": q_policy, "w1": w_1, "w2": w_2, "w3": w_3,
+               "Q_policy": q_policy, "w1": w_1, "w2": w_2, "w3": w_3, "queue_size": queue_size,
                "n_nodes": g.number_of_nodes()}, delay
 
 
@@ -266,7 +272,8 @@ def input_fn(data_dir, transform=True, repeat=True, shuffle=False):
                                           "link_capacity": tf.float32, "links": tf.int64,
                                           "paths": tf.int64, "sequences": tf.int64,"node_indices":tf.int64,
                                           "n_links": tf.int64, "n_paths": tf.int64, "ToS": tf.float32,
-                                          "Q_policy": tf.float32, "w1": tf.float32, "w2": tf.float32, "w3": tf.float32,
+                                          "Q_policy": tf.float32, "w1": tf.float32, "w2": tf.float32,
+                                           "w3": tf.float32,"queue_size":tf.int64,
                                             "n_nodes":tf.int64},
                                         tf.float32),
                                         ({"bandwith": tf.TensorShape([None]), "packets": tf.TensorShape([None]),
@@ -277,7 +284,7 @@ def input_fn(data_dir, transform=True, repeat=True, shuffle=False):
                                           "n_links": tf.TensorShape([]),
                                           "n_paths": tf.TensorShape([]), "ToS": tf.TensorShape([None]),
                                            "Q_policy": tf.TensorShape([None]), "w1": tf.TensorShape([None]),
-                                           "w2": tf.TensorShape([None]), "w3": tf.TensorShape([None]),
+                                           "w2": tf.TensorShape([None]), "w3": tf.TensorShape([None]), "queue_size":tf.TensorShape([None]),
                                             "n_nodes":tf.TensorShape([])},
                                          tf.TensorShape([None])))
     if transform:

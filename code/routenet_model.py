@@ -110,6 +110,9 @@ class RouteNetModel(tf.keras.Model):
         w_2 = f_['w2']
         w_3 = f_['w3']
         nodes = f_['node_indices']
+        queue_sizes = f_['queue_size']
+
+        print(queue_sizes[0])
 
 
         """
