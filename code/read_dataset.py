@@ -114,7 +114,7 @@ def generator(data_dir, shuffle = False):
 
         routing = sample.get_routing_matrix()
 
-        print(routing)
+       # print(routing)
 
         nodes = len(routing)
         # Remove diagonal from matrix
@@ -218,12 +218,12 @@ def generator(data_dir, shuffle = False):
 
         n_paths = len(path_ids)
         n_links = max(max(path_ids)) + 1
-        Scenario = detect_scenario(w_1,type_of_service,q_policy)
+       # Scenario = detect_scenario(w_1,type_of_service,q_policy)
         #print(n_links, len(w_1))
-        if(n_paths==552):
-            count[0]+=1
-        else:
-            count[1]+=1
+        # if(n_paths==552):
+        #     count[0]+=1
+        # else:
+        #     count[1]+=1
 
         yield {"bandwith": avg_bw, "packets": pkts_gen,
                "link_capacity": link_capacities,
@@ -231,7 +231,7 @@ def generator(data_dir, shuffle = False):
                "paths": path_indices, "sequences": sequ_indices,
                "n_links": n_links, "n_paths": n_paths, "ToS": type_of_service,
                "Q_policy": q_policy, "w1": w_1, "w2": w_2, "w3": w_3,
-               "Scenario":Scenario, "n_nodes": g.number_of_nodes()}, delay
+               "n_nodes": g.number_of_nodes()}, delay
 
 
 def transformation(x, y):
@@ -267,7 +267,7 @@ def input_fn(data_dir, transform=True, repeat=True, shuffle=False):
                                           "paths": tf.int64, "sequences": tf.int64,"node_indices":tf.int64,
                                           "n_links": tf.int64, "n_paths": tf.int64, "ToS": tf.float32,
                                           "Q_policy": tf.float32, "w1": tf.float32, "w2": tf.float32, "w3": tf.float32,
-                                           "Scenario": tf.int64, "n_nodes":tf.int64},
+                                            "n_nodes":tf.int64},
                                         tf.float32),
                                         ({"bandwith": tf.TensorShape([None]), "packets": tf.TensorShape([None]),
                                           "link_capacity": tf.TensorShape([None]),
@@ -278,7 +278,7 @@ def input_fn(data_dir, transform=True, repeat=True, shuffle=False):
                                           "n_paths": tf.TensorShape([]), "ToS": tf.TensorShape([None]),
                                            "Q_policy": tf.TensorShape([None]), "w1": tf.TensorShape([None]),
                                            "w2": tf.TensorShape([None]), "w3": tf.TensorShape([None]),
-                                           "Scenario": tf.TensorShape([None]), "n_nodes":tf.TensorShape([])},
+                                            "n_nodes":tf.TensorShape([])},
                                          tf.TensorShape([None])))
     if transform:
         ds = ds.map(lambda x, y: transformation(x, y))

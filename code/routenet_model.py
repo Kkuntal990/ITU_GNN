@@ -120,7 +120,7 @@ class RouteNetModel(tf.keras.Model):
         # Compute the shape for the  all-zero tensor for link_state
         shape = tf.stack([
             f_['n_links'],
-            int(self.config['HYPERPARAMETERS']['link_state_dim']) - 5
+            int(self.config['HYPERPARAMETERS']['link_state_dim']) - 1
         ], axis=0)
 
         # Initialize the initial hidden state for links
