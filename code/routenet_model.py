@@ -62,7 +62,7 @@ class RouteNetModel(tf.keras.Model):
         # Readout Neural Network. It expects as input the path states and outputs the per-path delay
 
         #TODO: First there should be attention layer.
-        
+
 
         self.readout = tf.keras.Sequential([
             tf.keras.layers.Input(shape=int(self.config['HYPERPARAMETERS']['path_state_dim'])),
@@ -71,7 +71,7 @@ class RouteNetModel(tf.keras.Model):
                                   kernel_regularizer=tf.keras.regularizers.l2(
                                       float(self.config['HYPERPARAMETERS']['l2'])),
                                   ),
-           
+
 
             tf.keras.layers.Dense(int(self.config['HYPERPARAMETERS']['readout_units']),
                                   activation=tf.nn.relu,
@@ -80,11 +80,11 @@ class RouteNetModel(tf.keras.Model):
 
             tf.keras.layers.BatchNormalization(
                 axis=1, epsilon=1e-4, momentum=0.99),
-           
+
             tf.keras.layers.Dense(output_units,
                                   kernel_regularizer=tf.keras.regularizers.l2(
                                       float(self.config['HYPERPARAMETERS']['l2_2'])))
-            
+
         ])
 
     def call(self, inputs, training=False):
@@ -109,7 +109,7 @@ class RouteNetModel(tf.keras.Model):
         w_1 = f_['w1']
         w_2 = f_['w2']
         w_3 = f_['w3']
-
+        nodes = f_['node_indices']
 
 
         """
@@ -126,10 +126,6 @@ class RouteNetModel(tf.keras.Model):
         # Initialize the initial hidden state for links
         link_state = tf.concat([
             tf.expand_dims(f_['link_capacity'], axis=1),
-            tf.expand_dims(q_policy, axis= 1),
-            tf.expand_dims(w_1, axis=1),
-            tf.expand_dims(w_2, axis=1),
-            tf.expand_dims(w_3, axis=1),
             tf.zeros(shape)
         ], axis=1)
 
@@ -145,7 +141,7 @@ class RouteNetModel(tf.keras.Model):
             tf.expand_dims(ToS, axis =1),
             tf.zeros(shape)
         ], axis = 1)
-        
+
       #  print(path_state.shape)
 
         # Iterate t times doing the message passing
@@ -186,7 +182,9 @@ class RouteNetModel(tf.keras.Model):
             link_state, _ = self.link_update(m, [link_state])
 
         # Call the readout ANN and return its predictions
+        # print(path_state.shape)
         r = self.readout(path_state, training=training)
+        # print(r.shape)
 
         return r
 
