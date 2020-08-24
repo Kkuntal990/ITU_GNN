@@ -120,6 +120,21 @@ class RouteNetModel(tf.keras.Model):
         and also insert weight of each queue of the node.
 
         """
+        shape = shape = tf.stack([
+            f_['n_nodes'],
+            int(self.config['HYPERPARAMETERS']['node_state_dim']) - 7
+        ], axis=0)
+        
+        node_state = tf.concat([
+            tf.expand_dims(q_policy, axis=1),
+            tf.expand_dims(w_1, axis=1),
+            tf.expand_dims(w_2, axis=1),
+            tf.expand_dims(w_3, axis=1),
+            
+            queue_sizes,
+            tf.zeros(shape)
+        ], axis=1)
+        
         # Compute the shape for the  all-zero tensor for link_state
         shape = tf.stack([
             f_['n_links'],
@@ -129,7 +144,7 @@ class RouteNetModel(tf.keras.Model):
         # Initialize the initial hidden state for links
         link_state = tf.concat([
             tf.expand_dims(f_['link_capacity'], axis=1),
-            tf.zeros(shape)
+            tf.zeros(shape,)
         ], axis=1)
 
         # Compute the shape for the  all-zero tensor for path_state
@@ -149,7 +164,18 @@ class RouteNetModel(tf.keras.Model):
 
         # Iterate t times doing the message passing
         for _ in range(int(self.config['HYPERPARAMETERS']['t'])):
-
+            h_tild = tf.gather(node_state, nodes)
+            ids = tf.stack([paths, seqs], axis=1)
+            max_len = tf.reduce_max(seqs) + 1
+            shape = tf.stack([
+                f_['n_paths'],
+                max_len,
+                int(self.config['HYPERPARAMETERS']['node_state_dim'])])
+            lens = tf.math.segment_sum(data=tf.ones_like(paths),
+                                      segment_ids=paths)
+            # Generate the aforementioned tensor [n_paths, max_len_path, dimension_link]
+            node_inputs = tf.scatter_nd(ids, h_tild, shape)
+            
             # The following lines generate a tensor of dimensions [n_paths, max_len_path, dimension_link] with all 0
             # but the link hidden states
             h_tild = tf.gather(link_state, links)

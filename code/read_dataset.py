@@ -127,39 +127,45 @@ def generator(data_dir, shuffle = False):
         g = sample.get_topology_object()
 
         cap_mat = np.full((g.number_of_nodes(), g.number_of_nodes()), fill_value=None)
-        q_policy = np.full((g.number_of_nodes(), g.number_of_nodes()), fill_value=None)
-        w_1 = np.full((g.number_of_nodes(), g.number_of_nodes()), fill_value=0.0)
-        w_2 = np.full((g.number_of_nodes(), g.number_of_nodes()), fill_value=0.0)
-        w_3 = np.full((g.number_of_nodes(), g.number_of_nodes()), fill_value=0.0)
-        queue_size = np.full((g.number_of_nodes(), g.number_of_nodes(), 3),
+        q_policy = np.full((g.number_of_nodes()), fill_value=None)
+        w_1 = np.full((g.number_of_nodes()), fill_value=0.0)
+        w_2 = np.full((g.number_of_nodes()), fill_value=0.0)
+        w_3 = np.full((g.number_of_nodes()), fill_value=0.0)
+        queue_size = np.full((g.number_of_nodes(), 3),
                       fill_value=0.0)
 
         for node in range(g.number_of_nodes()):
             curr = g.nodes[node]
+            q_policy[node] = float(POLICIES[curr['schedulingPolicy']])
+            queue_size[node] = np.array(curr['queueSizes'].split(','), dtype=float)
             for adj in g[node]:
-                cap_mat[node, adj] = g[node][adj][0]['bandwidth']
-                q_policy[node, adj] = POLICIES[curr['schedulingPolicy']]
-                try:
-                    weights = curr['schedulingWeights']
-                except:
-                    continue
+                cap_mat[node, adj] = float(g[node][adj][0]['bandwidth'])
+                
+            try:
+                weights = curr['schedulingWeights']
+            except:
+                continue
 
-                temp = weights.split(',')
-                w_1[node,adj] =  float(temp[0])
-                w_2[node,adj] =  float(temp[1])
-                w_3[node, adj] = float(temp[2])
-                queue_size[node, adj] = np.array(curr['queueSizes'].split(','), dtype=float)
+            temp = weights.split(',')
+            w_1[node] =  float(temp[0])
+            w_2[node] =  float(temp[1])
+            w_3[node] = float(temp[2])
+            
 
-
+        w_1 = w_1.tolist()
+        w_2 = w_2.tolist()
+        w_3 = w_3.tolist()
+        q_policy = q_policy.tolist()
+        queue_size = queue_size.tolist()
         links = np.where(np.ravel(cap_mat) != None)[0].tolist()
 
         link_capacities = (np.ravel(cap_mat)[links]).tolist()
 
-        q_policy = (np.ravel(q_policy)[links]).tolist()
-        w_1 = (np.ravel(w_1)[links]).tolist()
-        w_2 = (np.ravel(w_2)[links]).tolist()
-        w_3 = (np.ravel(w_3)[links]).tolist()
-        queue_size = (np.ravel(queue_size)[links]).tolist()
+        # q_policy = (np.ravel(q_policy)[links]).tolist()
+        # w_1 = (np.ravel(w_1)[links]).tolist()
+        # w_2 = (np.ravel(w_2)[links]).tolist()
+        # w_3 = (np.ravel(w_3)[links]).tolist()
+        # queue_size = (np.ravel(queue_size)[links]).tolist()
 
         #print(links, link_capacities)
 
