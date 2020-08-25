@@ -130,10 +130,11 @@ class RouteNetModel(tf.keras.Model):
             tf.expand_dims(w_1, axis=1),
             tf.expand_dims(w_2, axis=1),
             tf.expand_dims(w_3, axis=1),
-            
             queue_sizes,
             tf.zeros(shape)
         ], axis=1)
+
+        print(node_state.shape)
         
         # Compute the shape for the  all-zero tensor for link_state
         shape = tf.stack([
