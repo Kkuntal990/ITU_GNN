@@ -58,6 +58,7 @@ class RouteNetModel(tf.keras.Model):
         # GRU Cells used in the Message Passing step
         self.link_update = tf.keras.layers.GRUCell(int(self.config['HYPERPARAMETERS']['link_state_dim']))
         self.path_update = tf.keras.layers.GRUCell(int(self.config['HYPERPARAMETERS']['path_state_dim']))
+        self.path_update2 = tf.keras.layers.GRUCell(int(self.config['HYPERPARAMETERS']['path_state_dim']))
         self.node_update = tf.keras.layers.GRUCell(
             int(self.config['HYPERPARAMETERS']['node_state_dim']))
 
@@ -195,6 +196,9 @@ class RouteNetModel(tf.keras.Model):
             gru_rnn = tf.keras.layers.RNN(self.path_update,
                                           return_sequences=True,
                                           return_state=True)
+            gru_rnn2 = tf.keras.layers.RNN(self.path_update,
+                                          return_sequences=True,
+                                          return_state=True)
 
             # First message passing: update the path_state
             outputs, path_state = gru_rnn(inputs=link_inputs,
@@ -207,7 +211,7 @@ class RouteNetModel(tf.keras.Model):
             m = tf.gather_nd(outputs, ids)
             m = tf.math.unsorted_segment_sum(m, links, f_['n_links'])
 
-            outputs, path_state = gru_rnn(inputs=node_inputs,
+            outputs, path_state = gru_rnn2(inputs=node_inputs,
                                           initial_state=path_state,
                                           mask=tf.sequence_mask(lens))
 
