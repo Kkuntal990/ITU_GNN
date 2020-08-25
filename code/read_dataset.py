@@ -279,7 +279,7 @@ def input_fn(data_dir, transform=True, repeat=True, shuffle=False):
                                           "paths": tf.int64, "sequences": tf.int64,"node_indices":tf.int64,
                                           "n_links": tf.int64, "n_paths": tf.int64, "ToS": tf.float32,
                                           "Q_policy": tf.float32, "w1": tf.float32, "w2": tf.float32,
-                                           "w3": tf.float32,"queue_size":tf.int64,
+                                           "w3": tf.float32,"queue_size":tf.float32,
                                             "n_nodes":tf.int64},
                                         tf.float32),
                                         ({"bandwith": tf.TensorShape([None]), "packets": tf.TensorShape([None]),
@@ -290,7 +290,7 @@ def input_fn(data_dir, transform=True, repeat=True, shuffle=False):
                                           "n_links": tf.TensorShape([]),
                                           "n_paths": tf.TensorShape([]), "ToS": tf.TensorShape([None]),
                                            "Q_policy": tf.TensorShape([None]), "w1": tf.TensorShape([None]),
-                                           "w2": tf.TensorShape([None]), "w3": tf.TensorShape([None]), "queue_size":tf.TensorShape([None]),
+                                           "w2": tf.TensorShape([None]), "w3": tf.TensorShape([None]), "queue_size":tf.TensorShape([None, 3]),
                                             "n_nodes":tf.TensorShape([])},
                                          tf.TensorShape([None])))
     if transform:
