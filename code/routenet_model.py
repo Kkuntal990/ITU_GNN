@@ -80,8 +80,8 @@ class RouteNetModel(tf.keras.Model):
                                   kernel_regularizer=tf.keras.regularizers.l2(
                                       float(self.config['HYPERPARAMETERS']['l2']))),
 
-            tf.keras.layers.BatchNormalization(
-                axis=1, epsilon=1e-4, momentum=0.99),
+            # tf.keras.layers.BatchNormalization(
+            #     axis=1, epsilon=1e-4, momentum=0.99),
 
             tf.keras.layers.Dense(output_units,
                                   kernel_regularizer=tf.keras.regularizers.l2(
@@ -190,6 +190,12 @@ class RouteNetModel(tf.keras.Model):
 
             # Generate the aforementioned tensor [n_paths, max_len_path, dimension_link]
             link_inputs = tf.scatter_nd(ids, h_tild, shape)
+
+            #TODO : Message passing between edges and the nodes.
+
+            
+
+
 
             # Define the RNN used for the message passing links to paths
             gru_rnn = tf.keras.layers.RNN(self.path_update,
