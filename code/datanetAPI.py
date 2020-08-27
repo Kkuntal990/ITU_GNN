@@ -741,7 +741,7 @@ class DatanetAPI:
                         s._graph_file = used_files[1]
                         s._routing_file = used_files[2]
                         g = graphs_dic[root][s._graph_file]
-                        # XXX We considerer that all graphs using the same routing file have the same topology
+                        # We considerer that all graphs using the same routing file have the same topology
                         if (s._routing_file in routings_dic[root]):
                             routing_matrix = routings_dic[root][s._routing_file]
                         else:
