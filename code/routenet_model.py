@@ -65,7 +65,7 @@ class RouteNetModel(tf.keras.Model):
 
         #TODO: Create a graph embedding before predicting the delays.
 
-
+        #TODO: Create a batch normalization layer between graph embedding and the below inference level.
         self.readout = tf.keras.Sequential([
             tf.keras.layers.Input(shape=int(self.config['HYPERPARAMETERS']['path_state_dim'])),
             tf.keras.layers.Dense(int(self.config['HYPERPARAMETERS']['readout_units']),
@@ -193,7 +193,7 @@ class RouteNetModel(tf.keras.Model):
 
             #TODO : Message passing between edges and the nodes.
 
-            
+
 
 
 
@@ -226,6 +226,9 @@ class RouteNetModel(tf.keras.Model):
 
         # Call the readout ANN and return its predictions
         # print(path_state.shape)
+
+        #TODO: create a attention mechanism which with nodes and path.
+
         r = self.readout(path_state, training=training)
         # print(r.shape)
 
