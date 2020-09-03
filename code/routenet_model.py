@@ -27,8 +27,7 @@ from __future__ import print_function
 import tensorflow as tf
 
 
-POLICIES = {'WFQ':0, 'SP':1, 'DRR':2}
-
+POLICIES = {'WFQ': 0, 'SP': 1, 'DRR': 2}
 
 
 class RouteNetModel(tf.keras.Model):
@@ -56,18 +55,19 @@ class RouteNetModel(tf.keras.Model):
         self.config = config
 
         # GRU Cells used in the Message Passing step
-        self.link_update = tf.keras.layers.GRUCell(int(self.config['HYPERPARAMETERS']['link_state_dim']))
-        self.path_update = tf.keras.layers.GRUCell(int(self.config['HYPERPARAMETERS']['path_state_dim']))
+        self.link_update = tf.keras.layers.GRUCell(
+            int(self.config['HYPERPARAMETERS']['link_state_dim']))
+        self.path_update = tf.keras.layers.GRUCell(
+            int(self.config['HYPERPARAMETERS']['path_state_dim']))
         self.node_update = tf.keras.layers.GRUCell(
             int(self.config['HYPERPARAMETERS']['node_state_dim']))
 
         # Readout Neural Network. It expects as input the path states and outputs the per-path delay
 
-        #TODO: Create a graph embedding before predicting the delays.
-
-        #TODO: Create a batch normalization layer between graph embedding and the below inference level.
+        # TODO: Create a batch normalization layer between graph embedding and the below inference level.
         self.readout = tf.keras.Sequential([
-            tf.keras.layers.Input(shape=int(self.config['HYPERPARAMETERS']['path_state_dim'])),
+            tf.keras.layers.Input(
+                shape=int(self.config['HYPERPARAMETERS']['path_state_dim'])),
             tf.keras.layers.Dense(int(self.config['HYPERPARAMETERS']['readout_units']),
                                   activation=tf.nn.selu,
                                   kernel_regularizer=tf.keras.regularizers.l2(
@@ -89,6 +89,8 @@ class RouteNetModel(tf.keras.Model):
 
         ])
 
+        
+
     def call(self, inputs, training=False):
         """This function is execution each time the model is called
 
@@ -107,15 +109,12 @@ class RouteNetModel(tf.keras.Model):
         paths = f_['paths']
         seqs = f_['sequences']
         ToS = f_['ToS']
-        q_policy  = f_['Q_policy']
+        q_policy = f_['Q_policy']
         w_1 = f_['w1']
         w_2 = f_['w2']
         w_3 = f_['w3']
         nodes = f_['node_indices']
         queue_sizes = f_['queue_size']
-
-        print(queue_sizes[0])
-
 
         """
         Let's use type of queing policy of a node as 0,1,2 as {'WFQ', 'SP', 'DRR'},
@@ -126,7 +125,7 @@ class RouteNetModel(tf.keras.Model):
             f_['n_nodes'],
             int(self.config['HYPERPARAMETERS']['node_state_dim']) - 7
         ], axis=0)
-        
+
         node_state = tf.concat([
             tf.expand_dims(q_policy, axis=1),
             tf.expand_dims(w_1, axis=1),
@@ -136,7 +135,6 @@ class RouteNetModel(tf.keras.Model):
             tf.zeros(shape)
         ], axis=1)
 
-        
         # Compute the shape for the  all-zero tensor for link_state
         shape = tf.stack([
             f_['n_links'],
@@ -158,26 +156,37 @@ class RouteNetModel(tf.keras.Model):
         # Initialize the initial hidden state for paths
         path_state = tf.concat([
             tf.expand_dims(f_['bandwith'], axis=1),
-            tf.expand_dims(ToS, axis =1),
+            tf.expand_dims(ToS, axis=1),
             tf.zeros(shape)
-        ], axis = 1)
+        ], axis=1)
 
+        ids = tf.stack([paths, seqs], axis=1)
+        max_len = tf.reduce_max(seqs) + 1
+
+
+        attention = tf.keras.Sequential([
+            tf.keras.layers.Input(
+                shape=int(self.config['HYPERPARAMETERS']['node_state_dim'])),
+            tf.keras.layers.Dense(1, activation=tf.nn.leaky_relu, kernel_regularizer=tf.keras.regularizers.l2(
+                float(self.config['HYPERPARAMETERS']['l2'])
+            ))
+        ])
+    
       #  print(path_state.shape)
 
         # Iterate t times doing the message passing
         for _ in range(int(self.config['HYPERPARAMETERS']['t'])):
-            h_tild = tf.gather(node_state, nodes)
-            ids = tf.stack([paths, seqs], axis=1)
-            max_len = tf.reduce_max(seqs) + 1
+            weights = attention(node_state);
+            h_tild = tf.gather(tf.multiply(node_state, weights), nodes)
             shape = tf.stack([
                 f_['n_paths'],
                 max_len,
                 int(self.config['HYPERPARAMETERS']['node_state_dim'])])
             lens = tf.math.segment_sum(data=tf.ones_like(paths),
-                                      segment_ids=paths)
-            # Generate the aforementioned tensor [n_paths, max_len_path, dimension_link]
+                                       segment_ids=paths)
+            # Generate the aforementioned tensor [n_paths, max_len_path, dimension_node]
             node_inputs = tf.scatter_nd(ids, h_tild, shape)
-            
+
             # The following lines generate a tensor of dimensions [n_paths, max_len_path, dimension_link] with all 0
             # but the link hidden states
             h_tild = tf.gather(link_state, links)
@@ -187,15 +196,8 @@ class RouteNetModel(tf.keras.Model):
                 max_len,
                 int(self.config['HYPERPARAMETERS']['link_state_dim'])])
 
-
             # Generate the aforementioned tensor [n_paths, max_len_path, dimension_link]
             link_inputs = tf.scatter_nd(ids, h_tild, shape)
-
-            #TODO : Message passing between edges and the nodes.
-
-
-
-
 
             # Define the RNN used for the message passing links to paths
             gru_rnn = tf.keras.layers.RNN(self.path_update,
@@ -207,7 +209,6 @@ class RouteNetModel(tf.keras.Model):
                                           initial_state=path_state,
                                           mask=tf.sequence_mask(lens))
 
-            
 
             # For every link, gather and sum the sequence of hidden states of the paths that contain it
             m = tf.gather_nd(outputs, ids)
@@ -227,7 +228,7 @@ class RouteNetModel(tf.keras.Model):
         # Call the readout ANN and return its predictions
         # print(path_state.shape)
 
-        #TODO: create a attention mechanism which with nodes and path.
+        # TODO: create a attention mechanism which with nodes and path.
 
         r = self.readout(path_state, training=training)
         # print(r.shape)
@@ -276,7 +277,8 @@ def model_fn(features, labels, mode, params):
     model = RouteNetModel(params)
 
     # Execute the call function and obtain the predictions.
-    predictions = model(features, training=(mode == tf.estimator.ModeKeys.TRAIN))
+    predictions = model(features, training=(
+        mode == tf.estimator.ModeKeys.TRAIN))
 
     predictions = tf.squeeze(predictions)
 
@@ -333,13 +335,17 @@ def model_fn(features, labels, mode, params):
     # Compute the gradients.
     grads = tf.gradients(total_loss, model.trainable_variables)
 
-    summaries = [tf.summary.histogram(var.op.name, var) for var in model.trainable_variables]
-    summaries += [tf.summary.histogram(g.op.name, g) for g in grads if g is not None]
+    summaries = [tf.summary.histogram(var.op.name, var)
+                 for var in model.trainable_variables]
+    summaries += [tf.summary.histogram(g.op.name, g)
+                  for g in grads if g is not None]
 
     # Define an exponential decay schedule.
     decayed_lr = tf.keras.optimizers.schedules.ExponentialDecay(float(params['HYPERPARAMETERS']['learning_rate']),
-                                                                int(params['HYPERPARAMETERS']['decay_steps']),
-                                                                float(params['HYPERPARAMETERS']['decay_rate']),
+                                                                int(params['HYPERPARAMETERS']
+                                                                    ['decay_steps']),
+                                                                float(
+                                                                    params['HYPERPARAMETERS']['decay_rate']),
                                                                 staircase=True)
 
     # Define an Adam optimizer using the defined exponential decay.
