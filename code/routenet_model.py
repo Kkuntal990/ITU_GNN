@@ -164,20 +164,19 @@ class RouteNetModel(tf.keras.Model):
         max_len = tf.reduce_max(seqs) + 1
 
 
-        attention = tf.keras.Sequential([
-            tf.keras.layers.Input(
-                shape=int(self.config['HYPERPARAMETERS']['node_state_dim'])),
-            tf.keras.layers.Dense(1, activation=tf.nn.leaky_relu, kernel_regularizer=tf.keras.regularizers.l2(
-                float(self.config['HYPERPARAMETERS']['l2'])
-            ))
-        ])
+        # attention = tf.keras.Sequential([
+        #     tf.keras.layers.Input(
+        #         shape=int(self.config['HYPERPARAMETERS']['node_state_dim'])),
+        #     tf.keras.layers.Dense(1, activation=tf.nn.leaky_relu, kernel_regularizer=tf.keras.regularizers.l2(
+        #         float(self.config['HYPERPARAMETERS']['l2'])
+        #     ))
+        # ])
     
       #  print(path_state.shape)
 
         # Iterate t times doing the message passing
         for _ in range(int(self.config['HYPERPARAMETERS']['t'])):
-            weights = attention(node_state);
-            h_tild = tf.gather(tf.multiply(node_state, weights), nodes)
+            h_tild = tf.gather(node_state, nodes)
             shape = tf.stack([
                 f_['n_paths'],
                 max_len,
