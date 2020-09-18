@@ -64,7 +64,7 @@ class RouteNetModel(tf.keras.Model):
 
         # Readout Neural Network. It expects as input the path states and outputs the per-path delay
 
-        # TODO: Create a batch normalization layer between graph embedding and the below inference level.
+        #TODO: Make an global attention layer, which we will give very low weights to the padded inputs.
         self.readout = tf.keras.Sequential([
             tf.keras.layers.Input(
                 shape=int(self.config['HYPERPARAMETERS']['path_state_dim'])),
@@ -79,9 +79,6 @@ class RouteNetModel(tf.keras.Model):
                                   activation=tf.nn.relu,
                                   kernel_regularizer=tf.keras.regularizers.l2(
                                       float(self.config['HYPERPARAMETERS']['l2']))),
-
-            # tf.keras.layers.BatchNormalization(
-            #     axis=1, epsilon=1e-4, momentum=0.99),
 
             tf.keras.layers.Dense(output_units,
                                   kernel_regularizer=tf.keras.regularizers.l2(
@@ -164,15 +161,7 @@ class RouteNetModel(tf.keras.Model):
         max_len = tf.reduce_max(seqs) + 1
 
 
-        # attention = tf.keras.Sequential([
-        #     tf.keras.layers.Input(
-        #         shape=int(self.config['HYPERPARAMETERS']['node_state_dim'])),
-        #     tf.keras.layers.Dense(1, activation=tf.nn.leaky_relu, kernel_regularizer=tf.keras.regularizers.l2(
-        #         float(self.config['HYPERPARAMETERS']['l2'])
-        #     ))
-        # ])
-    
-      #  print(path_state.shape)
+
 
         # Iterate t times doing the message passing
         for _ in range(int(self.config['HYPERPARAMETERS']['t'])):
@@ -199,13 +188,20 @@ class RouteNetModel(tf.keras.Model):
             link_inputs = tf.scatter_nd(ids, h_tild, shape)
 
             # Define the RNN used for the message passing links to paths
-            gru_rnn = tf.keras.layers.RNN(self.path_update,
+            forward = tf.keras.layers.RNN(self.path_update,
                                           return_sequences=True,
                                           return_state=True)
 
+            backward = tf.keras.layers.RNN(self.path_update,
+                                          return_sequences=True,
+                                          return_state=True, go_backwards=True)
+
+            gru_rnn = tf.keras.layers.Bidirectional(forward, backward_layer = backward, merge_mode="sum")
+            
+
             # First message passing: update the path_state
             outputs, path_state = gru_rnn(inputs=link_inputs,
-                                          initial_state=path_state,
+                                          initial_state=[path_state,path_state],
                                           mask=tf.sequence_mask(lens))
 
 
@@ -229,6 +225,8 @@ class RouteNetModel(tf.keras.Model):
 
         # TODO: create a attention mechanism which with nodes and path.
 
+
+       # ww = tf.gather(node_state, nodes);
         r = self.readout(path_state, training=training)
         # print(r.shape)
 
