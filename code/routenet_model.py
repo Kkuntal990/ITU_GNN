@@ -59,6 +59,8 @@ class RouteNetModel(tf.keras.Model):
             int(self.config['HYPERPARAMETERS']['link_state_dim']))
         self.path_update = tf.keras.layers.GRUCell(
             int(self.config['HYPERPARAMETERS']['path_state_dim']))
+        self.b_path_udpate = tf.keras.layers.GRUCell(
+            int(self.config['HYPERPARAMETERS']['path_state_dim']))
         self.node_update = tf.keras.layers.GRUCell(
             int(self.config['HYPERPARAMETERS']['node_state_dim']))
 
@@ -191,8 +193,12 @@ class RouteNetModel(tf.keras.Model):
             forward = tf.keras.layers.RNN(self.path_update,
                                           return_sequences=True,
                                           return_state=True)
+            backward = tf.keras.layers.RNN(self.path_update,
+                                           return_sequences=True,
+                                           return_state=True, go_backwards=True)
 
-            gru_rnn = tf.keras.layers.Bidirectional(forward, merge_mode="sum")
+            gru_rnn = tf.keras.layers.Bidirectional(
+                forward, backward_layer=backward,  merge_mode="sum")
             
 
             # First message passing: update the path_state
@@ -206,7 +212,7 @@ class RouteNetModel(tf.keras.Model):
             m = tf.math.unsorted_segment_sum(m, links, f_['n_links'])
 
             outputs, path_state, b_path_state = gru_rnn(inputs=node_inputs,
-                                                        initial_state=[path_state,path_state],
+                                                        initial_state=[path_state, b_path_state],
                                                         mask=tf.sequence_mask(lens))
             m2 = tf.gather_nd(outputs, ids)
             m2 = tf.math.unsorted_segment_sum(m2, nodes, f_['n_nodes'])
