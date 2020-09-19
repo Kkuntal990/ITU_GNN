@@ -195,7 +195,7 @@ class RouteNetModel(tf.keras.Model):
                                           return_state=True)
             backward = tf.keras.layers.RNN(self.path_update,
                                            return_sequences=True,
-                                           return_state=True, go_backwards=True)
+                                           return_state=True, go_backward=True)
 
             gru_rnn = tf.keras.layers.Bidirectional(
                 forward, backward_layer=backward,  merge_mode="sum")
