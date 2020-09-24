@@ -30,6 +30,7 @@ import tensorflow as tf
 POLICIES = {'WFQ': 0, 'SP': 1, 'DRR': 2}
 
 
+
 class RouteNetModel(tf.keras.Model):
     """ Init method for the custom model.
 
@@ -66,7 +67,6 @@ class RouteNetModel(tf.keras.Model):
 
         # Readout Neural Network. It expects as input the path states and outputs the per-path delay
 
-        #TODO: Make an global attention layer, which we will give very low weights to the padded inputs.
         self.readout = tf.keras.Sequential([
             tf.keras.layers.Input(
                 shape=int(self.config['HYPERPARAMETERS']['path_state_dim'])),
@@ -88,6 +88,15 @@ class RouteNetModel(tf.keras.Model):
 
         ])
 
+        self.attention = tf.keras.Sequential([
+            #input = [bs, src_len,path_state+backstate]
+            tf.keras.layers.Input(
+                shape=int(self.config['HYPERPARAMETERS']['link_state_dim'])),
+            tf.keras.layers.Dense(1)
+        ])
+
+
+        
         
 
     def call(self, inputs, training=False):
@@ -189,13 +198,17 @@ class RouteNetModel(tf.keras.Model):
             # Generate the aforementioned tensor [n_paths, max_len_path, dimension_link]
             link_inputs = tf.scatter_nd(ids, h_tild, shape)
 
+            attn = self.attention(link_inputs)
+
+            link_inputs = tf.multiply(link_inputs, attn)
+
             # Define the RNN used for the message passing links to paths
             forward = tf.keras.layers.RNN(self.path_update,
                                           return_sequences=True,
                                           return_state=True)
             backward = tf.keras.layers.RNN(self.path_update,
                                            return_sequences=True,
-                                           return_state=True, go_backward=True)
+                                           return_state=True, go_backwards=True)
 
             gru_rnn = tf.keras.layers.Bidirectional(
                 forward, backward_layer=backward,  merge_mode="sum")
@@ -224,14 +237,11 @@ class RouteNetModel(tf.keras.Model):
         # Call the readout ANN and return its predictions
         # print(path_state.shape)
 
-        # TODO: create a attention mechanism which with nodes and path.
-
-
-       # ww = tf.gather(node_state, nodes);
+        # ww = tf.gather(node_state, nodes);
         r = self.readout(path_state, training=training)
         # print(r.shape)
-
         return r
+        
 
 
 def r_squared(labels, predictions):
@@ -328,8 +338,8 @@ def model_fn(features, labels, mode, params):
         )
 
     # If we are performing training.
-    assert mode == tf.estimator.ModeKeys.TRAIN
 
+    assert mode == tf.estimator.ModeKeys.TRAIN
     # Compute the gradients.
     grads = tf.gradients(total_loss, model.trainable_variables)
 
