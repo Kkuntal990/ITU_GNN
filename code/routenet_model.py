@@ -87,7 +87,7 @@ class RouteNetModel(tf.keras.Model):
                                       float(self.config['HYPERPARAMETERS']['l2_2'])))
 
         ])
-
+        #FIXME: Warning , model was inititated for (none, 32) but this operation is on (None, None, 32)
         self.attention = tf.keras.Sequential([
             #input = [bs, src_len,path_state+backstate]
             tf.keras.layers.Input(
