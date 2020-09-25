@@ -104,9 +104,6 @@ class RouteNetModel(tf.keras.Model):
         ])
 
 
-        
-        
-
     def call(self, inputs, training=False):
         """This function is execution each time the model is called
 
