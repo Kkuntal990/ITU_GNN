@@ -100,7 +100,7 @@ class RouteNetModel(tf.keras.Model):
             #input = [bs, src_len,path_state+backstate]
             tf.keras.layers.Input(
                 shape=(None,int(self.config['HYPERPARAMETERS']['link_state_dim']))),
-            tf.keras.layers.Dense(1)
+            tf.keras.layers.Dense(1,activation='softmax')
         ])
 
 
@@ -233,7 +233,7 @@ class RouteNetModel(tf.keras.Model):
             m = tf.math.unsorted_segment_sum(m, links, f_['n_links'])
 
             outputs, path_state, b_path_state = gru_rnn(inputs=node_inputs,
-                                                        initial_state=[path_state, b_path_state],
+                                                        initial_state=[path_state, path_state],
                                                         mask=tf.sequence_mask(lens))
             path_state = self.merge(tf.concat([path_state, b_path_state] ,axis=1))
 
