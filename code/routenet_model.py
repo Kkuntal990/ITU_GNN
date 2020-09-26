@@ -26,7 +26,7 @@
 from __future__ import print_function
 import tensorflow as tf
 
-
+from spektral.layers import GraphAttention
 POLICIES = {'WFQ': 0, 'SP': 1, 'DRR': 2}
 
 
@@ -66,7 +66,8 @@ class RouteNetModel(tf.keras.Model):
             int(self.config['HYPERPARAMETERS']['node_state_dim']))
 
         # Readout Neural Network. It expects as input the path states and outputs the per-path delay
-
+        self.GAT = GraphAttention(channels = int(self.config['HYPERPARAMETERS']['node_state_dim']), 
+                                  attn_heads=12 ,concat_heads=False)
         self.readout = tf.keras.Sequential([
             tf.keras.layers.Input(
                 shape=int(self.config['HYPERPARAMETERS']['path_state_dim'])),
@@ -117,8 +118,7 @@ class RouteNetModel(tf.keras.Model):
         """
 
         f_ = inputs
-
-        links = f_['links']
+        #links = f_['links']
         paths = f_['paths']
         seqs = f_['sequences']
         ToS = f_['ToS']
@@ -175,12 +175,20 @@ class RouteNetModel(tf.keras.Model):
 
         ids = tf.stack([paths, seqs], axis=1)
         max_len = tf.reduce_max(seqs) + 1
+        links1 = f_["adj"]
+        links1 = tf.reshape(links1,(-1,1))
+        adj = tf.zeros((f_['n_nodes']**2))
+        adj = tf.tensor_scatter_nd_update(adj, links1, link_state[:,0])
+        adj = tf.reshape(adj,(f_['n_nodes'],f_['n_nodes']))
+        node_state = self.GAT([node_state , adj])  
 
-
-
+        
 
         # Iterate t times doing the message passing
         for _ in range(int(self.config['HYPERPARAMETERS']['t'])):
+  
+            
+            
             h_tild = tf.gather(node_state, nodes)
             shape = tf.stack([
                 f_['n_paths'],
@@ -193,15 +201,15 @@ class RouteNetModel(tf.keras.Model):
 
             # The following lines generate a tensor of dimensions [n_paths, max_len_path, dimension_link] with all 0
             # but the link hidden states
-            h_tild = tf.gather(link_state, links)
+            # h_tild = tf.gather(link_state, links)
 
-            shape = tf.stack([
-                f_['n_paths'],
-                max_len,
-                int(self.config['HYPERPARAMETERS']['link_state_dim'])])
+            # shape = tf.stack([
+            #     f_['n_paths'],
+            #     max_len,
+            #     int(self.config['HYPERPARAMETERS']['link_state_dim'])])
 
-            # Generate the aforementioned tensor [n_paths, max_len_path, dimension_link]
-            link_inputs = tf.scatter_nd(ids, h_tild, shape)
+            # # Generate the aforementioned tensor [n_paths, max_len_path, dimension_link]
+            # link_inputs = tf.scatter_nd(ids, h_tild, shape)
 
             #attn = self.attention(link_inputs)
 
@@ -220,25 +228,25 @@ class RouteNetModel(tf.keras.Model):
             
 
             # First message passing: update the path_state
-            outputs, path_state, b_path_state = gru_rnn(inputs=link_inputs,
-                                                        initial_state=[path_state,path_state],
-                                          mask=tf.sequence_mask(lens))
+            # outputs, path_state, b_path_state = gru_rnn(inputs=link_inputs,
+            #                                             initial_state=[path_state,path_state],
+            #                               mask=tf.sequence_mask(lens))
 
-            #path_state = self.merge(tf.concat([path_state, b_path_state] ,axis=1))
-            # For every link, gather and sum the sequence of hidden states of the paths that contain it
-            m = tf.gather_nd(outputs, ids)
-            m = tf.math.unsorted_segment_sum(m, links, f_['n_links'])
+            # #path_state = self.merge(tf.concat([path_state, b_path_state] ,axis=1))
+            # # For every link, gather and sum the sequence of hidden states of the paths that contain it
+            # m = tf.gather_nd(outputs, ids)
+            # m = tf.math.unsorted_segment_sum(m, links, f_['n_links'])
 
             outputs, path_state, b_path_state = gru_rnn(inputs=node_inputs,
-                                                        initial_state=[path_state, b_path_state],
+                                                        initial_state=[path_state, path_state],
                                                         mask=tf.sequence_mask(lens))
             #path_state = self.merge(tf.concat([path_state, b_path_state] ,axis=1))
 
             m2 = tf.gather_nd(outputs, ids)
             m2 = tf.math.unsorted_segment_sum(m2, nodes, f_['n_nodes'])
             # Second message passing: update the link_state
-            link_state, _ = self.link_update(m, [link_state])
-
+            #
+           
             node_state, _ = self.node_update(m2, [node_state])
 
         # Call the readout ANN and return its predictions

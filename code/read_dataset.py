@@ -48,31 +48,7 @@ def detect_scenario(w1,tos,policy):
 
     return Scenario
 
-def binary_search(arr, x):
-    low = 0
-    high = len(arr) - 1
-    mid = 0
 
-    while low <= high:
-
-        mid = (high + low) // 2
-
-        # Check if x is present at mid
-        if arr[mid] < x:
-            low = mid + 1
-
-        # If x is greater, ignore left half
-        elif arr[mid] > x:
-            high = mid - 1
-
-        # If x is smaller, ignore right half
-        else:
-            return mid
-
-    # If we reach here, then the element was not present
-    return -1
-
-count = [0,0]
 def generator(data_dir, shuffle = False):
     global count
     """This function uses the provided API to read the data and returns
@@ -93,25 +69,14 @@ def generator(data_dir, shuffle = False):
             - n_links, n_paths
             The second element contains the source-destination delay
     """
-    # final = np.genfromtxt("final2.txt")
+
     tool = DatanetAPI(data_dir, [], shuffle)
     it = iter(tool)
-    # n=0
-    # maxf = max(final)
-    # print("Training on:" , maxf)
     for sample in it:
         ###################
         #  EXTRACT PATHS  #
         ###################
-        # if (n> maxf):
-        #     print("break")
-        #     break
-        # if binary_search(final,n)==-1:
-        #     n+=1
-        #     continue
-
-        # n+=1
-
+     
         routing = sample.get_routing_matrix()
 
        # print(routing)
@@ -229,18 +194,12 @@ def generator(data_dir, shuffle = False):
 
         n_paths = len(path_ids)
         n_links = max(max(path_ids)) + 1
-       # Scenario = detect_scenario(w_1,type_of_service,q_policy)
-        #print(n_links, len(w_1))
-        # if(n_paths==552):
-        #     count[0]+=1
-        # else:
-        #     count[1]+=1
-
+      
 
         yield {"bandwith": avg_bw, "packets": pkts_gen,
                "link_capacity": link_capacities,
                "links": link_indices,"node_indices":node_indices,
-               "paths": path_indices, "sequences": sequ_indices,
+               "paths": path_indices, "sequences": sequ_indices,"adj" : links,
                "n_links": n_links, "n_paths": n_paths, "ToS": type_of_service,
                "Q_policy": q_policy, "w1": w_1, "w2": w_2, "w3": w_3, "queue_size": queue_size,
                "n_nodes": g.number_of_nodes()}, delay
@@ -276,7 +235,7 @@ def input_fn(data_dir, transform=True, repeat=True, shuffle=False):
     ds = tf.data.Dataset.from_generator(lambda: generator(data_dir=data_dir, shuffle=shuffle),
                                         ({"bandwith": tf.float32, "packets": tf.float32,
                                           "link_capacity": tf.float32, "links": tf.int64,
-                                          "paths": tf.int64, "sequences": tf.int64,"node_indices":tf.int64,
+                                          "paths": tf.int64, "sequences": tf.int64,"adj" : tf.int64,"node_indices":tf.int64,
                                           "n_links": tf.int64, "n_paths": tf.int64, "ToS": tf.float32,
                                           "Q_policy": tf.float32, "w1": tf.float32, "w2": tf.float32,
                                            "w3": tf.float32,"queue_size":tf.float32,
@@ -286,7 +245,7 @@ def input_fn(data_dir, transform=True, repeat=True, shuffle=False):
                                           "link_capacity": tf.TensorShape([None]),
                                           "links": tf.TensorShape([None]),
                                           "paths": tf.TensorShape([None]),
-                                          "sequences": tf.TensorShape([None]),"node_indices":tf.TensorShape([None]),
+                                          "sequences": tf.TensorShape([None]),"adj" : tf.TensorShape([None]),"node_indices":tf.TensorShape([None]),
                                           "n_links": tf.TensorShape([]),
                                           "n_paths": tf.TensorShape([]), "ToS": tf.TensorShape([None]),
                                            "Q_policy": tf.TensorShape([None]), "w1": tf.TensorShape([None]),
