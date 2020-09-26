@@ -87,19 +87,10 @@ class RouteNetModel(tf.keras.Model):
                                       float(self.config['HYPERPARAMETERS']['l2_2'])))
 
         ])
-        #FIXME: Warning , model was inititated for (none, 32) but this operation is on (None, None, 32)
 
-        self.merge = tf.keras.Sequential([
-            #input = [bs, src_len,path_state+backstate]
-            tf.keras.layers.Input(
-                shape=2*int(self.config['HYPERPARAMETERS']['path_state_dim'])),
-            tf.keras.layers.Dense(int(self.config['HYPERPARAMETERS']['path_state_dim']))
-        ])
 
         self.attention = tf.keras.Sequential([
-            #input = [bs, src_len,path_state+backstate]
-            tf.keras.layers.Input(
-                shape=(None,int(self.config['HYPERPARAMETERS']['link_state_dim']))),
+            tf.keras.layers.Masking(mask_value=1e-6, input_shape=(None, 32)),
             tf.keras.layers.Dense(1,activation='softmax')
         ])
 
@@ -227,7 +218,6 @@ class RouteNetModel(tf.keras.Model):
                                                         initial_state=[path_state,path_state],
                                           mask=tf.sequence_mask(lens))
 
-            path_state = self.merge(tf.concat([path_state, b_path_state] ,axis=1))
             # For every link, gather and sum the sequence of hidden states of the paths that contain it
             m = tf.gather_nd(outputs, ids)
             m = tf.math.unsorted_segment_sum(m, links, f_['n_links'])
@@ -235,7 +225,6 @@ class RouteNetModel(tf.keras.Model):
             outputs, path_state, b_path_state = gru_rnn(inputs=node_inputs,
                                                         initial_state=[path_state, path_state],
                                                         mask=tf.sequence_mask(lens))
-            path_state = self.merge(tf.concat([path_state, b_path_state] ,axis=1))
 
             m2 = tf.gather_nd(outputs, ids)
             m2 = tf.math.unsorted_segment_sum(m2, nodes, f_['n_nodes'])
