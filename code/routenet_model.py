@@ -76,7 +76,6 @@ class RouteNetModel(tf.keras.Model):
                                       float(self.config['HYPERPARAMETERS']['l2'])),
                                   ),
 
-
             tf.keras.layers.Dense(int(self.config['HYPERPARAMETERS']['readout_units']),
                                   activation=tf.nn.relu,
                                   kernel_regularizer=tf.keras.regularizers.l2(
@@ -90,7 +89,11 @@ class RouteNetModel(tf.keras.Model):
 
 
         self.attention = tf.keras.Sequential([
-            tf.keras.layers.Masking(mask_value=1e-6, input_shape=(None, 32)),
+            tf.keras.layers.Masking(
+                mask_value=1e-6, input_shape=(None, int(self.config['HYPERPARAMETERS']['link_state_dim']) + int(self.config['HYPERPARAMETERS']['path_state_dim']))),
+            tf.keras.layers.Dropout(0.4),
+            tf.keras.layers.Dense(
+                int(self.config['HYPERPARAMETERS']['path_state_dim'])),
             tf.keras.layers.Dense(1,activation='softmax')
         ])
 
@@ -194,10 +197,12 @@ class RouteNetModel(tf.keras.Model):
                 max_len,
                 int(self.config['HYPERPARAMETERS']['link_state_dim'])])
 
+            #temp = tf.select(tf.sequence_mask(lens), path_state, tf.zeros(shape, dtype=tf.int64))
+
             # Generate the aforementioned tensor [n_paths, max_len_path, dimension_link]
             link_inputs = tf.scatter_nd(ids, h_tild, shape)
-
-            attn = self.attention(link_inputs)
+            attn = self.attention(tf.concat([link_inputs, tf.tile(tf.expand_dims(path_state, axis=1),
+                           [1,max_len,1])], axis=2))
 
             link_inputs = tf.multiply(link_inputs, attn)
 
