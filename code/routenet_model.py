@@ -197,12 +197,13 @@ class RouteNetModel(tf.keras.Model):
                 max_len,
                 int(self.config['HYPERPARAMETERS']['link_state_dim'])])
 
-            #temp = tf.select(tf.sequence_mask(lens), path_state, tf.zeros(shape, dtype=tf.int64))
+            temp = tf.where(tf.sequence_mask(lens), tf.ones(
+                tf.shape(tf.sequence_mask(lens)), dtype=tf.float32), tf.zeros(tf.shape(tf.sequence_mask(lens)), dtype=tf.float32))
 
             # Generate the aforementioned tensor [n_paths, max_len_path, dimension_link]
             link_inputs = tf.scatter_nd(ids, h_tild, shape)
-            attn = self.attention(tf.concat([link_inputs, tf.tile(tf.expand_dims(path_state, axis=1),
-                           [1,max_len,1])], axis=2))
+            attn = self.attention(tf.concat([link_inputs, tf.multiply(tf.expand_dims(temp, axis=2),tf.tile(tf.expand_dims(path_state, axis=1),
+                                                                  [1, max_len, 1]))], axis=2))
 
             link_inputs = tf.multiply(link_inputs, attn)
 
