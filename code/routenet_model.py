@@ -67,7 +67,7 @@ class RouteNetModel(tf.keras.Model):
 
         # Readout Neural Network. It expects as input the path states and outputs the per-path delay
         self.GAT = GraphAttention(channels = int(self.config['HYPERPARAMETERS']['node_state_dim']), 
-                                  attn_heads=12 ,concat_heads=False)
+                                  attn_heads=24 ,concat_heads=False)
         self.readout = tf.keras.Sequential([
             tf.keras.layers.Input(
                 shape=int(self.config['HYPERPARAMETERS']['path_state_dim'])),
@@ -180,15 +180,14 @@ class RouteNetModel(tf.keras.Model):
         adj = tf.zeros((f_['n_nodes']**2))
         adj = tf.tensor_scatter_nd_update(adj, links1, link_state[:,0])
         adj = tf.reshape(adj,(f_['n_nodes'],f_['n_nodes']))
-        node_state = self.GAT([node_state , adj])  
+        adj = tf.linalg.normalize(adj)[0]
 
         
 
         # Iterate t times doing the message passing
         for _ in range(int(self.config['HYPERPARAMETERS']['t'])):
-  
-            
-            
+
+            node_state = self.GAT([node_state ,adj ])
             h_tild = tf.gather(node_state, nodes)
             shape = tf.stack([
                 f_['n_paths'],
@@ -219,7 +218,7 @@ class RouteNetModel(tf.keras.Model):
             forward = tf.keras.layers.RNN(self.path_update,
                                           return_sequences=True,
                                           return_state=True)
-            backward = tf.keras.layers.RNN(self.path_update,
+            backward = tf.keras.layers.RNN(self.b_path_udpate,
                                            return_sequences=True,
                                            return_state=True, go_backwards=True)
 
@@ -245,9 +244,9 @@ class RouteNetModel(tf.keras.Model):
             m2 = tf.gather_nd(outputs, ids)
             m2 = tf.math.unsorted_segment_sum(m2, nodes, f_['n_nodes'])
             # Second message passing: update the link_state
-            #
-           
+            
             node_state, _ = self.node_update(m2, [node_state])
+            
 
         # Call the readout ANN and return its predictions
         # print(path_state.shape)
