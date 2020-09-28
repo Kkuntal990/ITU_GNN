@@ -67,7 +67,7 @@ class RouteNetModel(tf.keras.Model):
 
         # Readout Neural Network. It expects as input the path states and outputs the per-path delay
         self.GAT = GraphAttention(channels = int(self.config['HYPERPARAMETERS']['node_state_dim']), 
-                                  attn_heads=int(self.config['HYPERPARAMETERS']['attention_heads'] ,concat_heads=False)
+                                  attn_heads=int(self.config['HYPERPARAMETERS']['attention_heads']) ,concat_heads=False)
         self.readout = tf.keras.Sequential([
             tf.keras.layers.Input(
                 shape=int(self.config['HYPERPARAMETERS']['path_state_dim'])),
