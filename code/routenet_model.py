@@ -181,13 +181,13 @@ class RouteNetModel(tf.keras.Model):
         adj = tf.tensor_scatter_nd_update(adj, links1, link_state[:,0])
         adj = tf.reshape(adj,(f_['n_nodes'],f_['n_nodes']))
         adj = tf.linalg.normalize(adj)[0]
-
+        node_state = self.GAT([node_state ,adj ])
         
 
         # Iterate t times doing the message passing
         for _ in range(int(self.config['HYPERPARAMETERS']['t'])):
 
-            node_state = self.GAT([node_state ,adj ])
+            
             h_tild = tf.gather(node_state, nodes)
             shape = tf.stack([
                 f_['n_paths'],
