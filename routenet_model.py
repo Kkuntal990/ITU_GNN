@@ -27,6 +27,10 @@ from __future__ import print_function
 import tensorflow as tf
 
 
+POLICIES = {'WFQ': 0, 'SP': 1, 'DRR': 2}
+
+
+
 class RouteNetModel(tf.keras.Model):
     """ Init method for the custom model.
 
@@ -52,25 +56,50 @@ class RouteNetModel(tf.keras.Model):
         self.config = config
 
         # GRU Cells used in the Message Passing step
-        self.link_update = tf.keras.layers.GRUCell(int(self.config['HYPERPARAMETERS']['link_state_dim']))
-        self.path_update = tf.keras.layers.GRUCell(int(self.config['HYPERPARAMETERS']['path_state_dim']))
+        self.link_update = tf.keras.layers.GRUCell(
+            int(self.config['HYPERPARAMETERS']['link_state_dim']))
+        self.path_update = tf.keras.layers.GRUCell(
+            int(self.config['HYPERPARAMETERS']['path_state_dim']))
+        self.b_path_udpate = tf.keras.layers.GRUCell(
+            int(self.config['HYPERPARAMETERS']['path_state_dim']))
+        self.node_update = tf.keras.layers.GRUCell(
+            int(self.config['HYPERPARAMETERS']['node_state_dim']))
 
         # Readout Neural Network. It expects as input the path states and outputs the per-path delay
+
         self.readout = tf.keras.Sequential([
-            tf.keras.layers.Input(shape=int(self.config['HYPERPARAMETERS']['path_state_dim'])),
+            tf.keras.layers.Input(
+                shape=int(self.config['HYPERPARAMETERS']['path_state_dim'])),
             tf.keras.layers.Dense(int(self.config['HYPERPARAMETERS']['readout_units']),
                                   activation=tf.nn.selu,
                                   kernel_regularizer=tf.keras.regularizers.l2(
                                       float(self.config['HYPERPARAMETERS']['l2'])),
                                   ),
+
             tf.keras.layers.Dense(int(self.config['HYPERPARAMETERS']['readout_units']),
                                   activation=tf.nn.relu,
                                   kernel_regularizer=tf.keras.regularizers.l2(
                                       float(self.config['HYPERPARAMETERS']['l2']))),
+
             tf.keras.layers.Dense(output_units,
                                   kernel_regularizer=tf.keras.regularizers.l2(
                                       float(self.config['HYPERPARAMETERS']['l2_2'])))
+
         ])
+
+
+        self.attention = tf.keras.Sequential([
+            tf.keras.layers.Masking(
+                mask_value=1e-6, input_shape=(None, int(self.config['HYPERPARAMETERS']['link_state_dim']) + int(self.config['HYPERPARAMETERS']['path_state_dim']))),
+            tf.keras.layers.Dropout(0.4),
+            tf.keras.layers.Dense(
+                int(self.config['HYPERPARAMETERS']['path_state_dim'])),
+            tf.keras.layers.Dense(1,activation='softmax')
+        ])
+
+
+        
+        
 
     def call(self, inputs, training=False):
         """This function is execution each time the model is called
@@ -89,6 +118,32 @@ class RouteNetModel(tf.keras.Model):
         links = f_['links']
         paths = f_['paths']
         seqs = f_['sequences']
+        ToS = f_['ToS']
+        q_policy = f_['Q_policy']
+        w_1 = f_['w1']
+        w_2 = f_['w2']
+        w_3 = f_['w3']
+        nodes = f_['node_indices']
+        queue_sizes = f_['queue_size']
+
+        """
+        Let's use type of queing policy of a node as 0,1,2 as {'WFQ', 'SP', 'DRR'},
+        and also insert weight of each queue of the node.
+
+        """
+        shape = shape = tf.stack([
+            f_['n_nodes'],
+            int(self.config['HYPERPARAMETERS']['node_state_dim']) - 7
+        ], axis=0)
+
+        node_state = tf.concat([
+            tf.expand_dims(q_policy, axis=1),
+            tf.expand_dims(w_1, axis=1),
+            tf.expand_dims(w_2, axis=1),
+            tf.expand_dims(w_3, axis=1),
+            queue_sizes,
+            tf.zeros(shape)
+        ], axis=1)
 
         # Compute the shape for the  all-zero tensor for link_state
         shape = tf.stack([
@@ -99,62 +154,99 @@ class RouteNetModel(tf.keras.Model):
         # Initialize the initial hidden state for links
         link_state = tf.concat([
             tf.expand_dims(f_['link_capacity'], axis=1),
-            tf.zeros(shape)
+            tf.zeros(shape,)
         ], axis=1)
 
         # Compute the shape for the  all-zero tensor for path_state
         shape = tf.stack([
             f_['n_paths'],
-            int(self.config['HYPERPARAMETERS']['path_state_dim']) - 1
+            int(self.config['HYPERPARAMETERS']['path_state_dim']) - 2
         ], axis=0)
 
         # Initialize the initial hidden state for paths
         path_state = tf.concat([
             tf.expand_dims(f_['bandwith'], axis=1),
+            tf.expand_dims(ToS, axis=1),
             tf.zeros(shape)
         ], axis=1)
 
+        ids = tf.stack([paths, seqs], axis=1)
+        max_len = tf.reduce_max(seqs) + 1
+
+
+
+
         # Iterate t times doing the message passing
         for _ in range(int(self.config['HYPERPARAMETERS']['t'])):
+            h_tild = tf.gather(node_state, nodes)
+            shape = tf.stack([
+                f_['n_paths'],
+                max_len,
+                int(self.config['HYPERPARAMETERS']['node_state_dim'])])
+            lens = tf.math.segment_sum(data=tf.ones_like(paths),
+                                       segment_ids=paths)
+            # Generate the aforementioned tensor [n_paths, max_len_path, dimension_node]
+            node_inputs = tf.scatter_nd(ids, h_tild, shape)
 
             # The following lines generate a tensor of dimensions [n_paths, max_len_path, dimension_link] with all 0
             # but the link hidden states
             h_tild = tf.gather(link_state, links)
 
-            ids = tf.stack([paths, seqs], axis=1)
-            max_len = tf.reduce_max(seqs) + 1
             shape = tf.stack([
                 f_['n_paths'],
                 max_len,
                 int(self.config['HYPERPARAMETERS']['link_state_dim'])])
 
-            lens = tf.math.segment_sum(data=tf.ones_like(paths),
-                                       segment_ids=paths)
+            temp = tf.where(tf.sequence_mask(lens), tf.ones(
+                tf.shape(tf.sequence_mask(lens)), dtype=tf.float32), tf.zeros(tf.shape(tf.sequence_mask(lens)), dtype=tf.float32))
 
             # Generate the aforementioned tensor [n_paths, max_len_path, dimension_link]
             link_inputs = tf.scatter_nd(ids, h_tild, shape)
+            attn = self.attention(tf.concat([link_inputs, tf.multiply(tf.expand_dims(temp, axis=2),tf.tile(tf.expand_dims(path_state, axis=1),
+                                                                  [1, max_len, 1]))], axis=2))
+
+            link_inputs = tf.multiply(link_inputs, attn)
 
             # Define the RNN used for the message passing links to paths
-            gru_rnn = tf.keras.layers.RNN(self.path_update,
+            forward = tf.keras.layers.RNN(self.path_update,
                                           return_sequences=True,
                                           return_state=True)
+            backward = tf.keras.layers.RNN(self.path_update,
+                                           return_sequences=True,
+                                           return_state=True, go_backwards=True)
+
+            gru_rnn = tf.keras.layers.Bidirectional(
+                forward, backward_layer=backward,  merge_mode="sum")
+            
 
             # First message passing: update the path_state
-            outputs, path_state = gru_rnn(inputs=link_inputs,
-                                          initial_state=path_state,
+            outputs, path_state, b_path_state = gru_rnn(inputs=link_inputs,
+                                                        initial_state=[path_state,path_state],
                                           mask=tf.sequence_mask(lens))
 
             # For every link, gather and sum the sequence of hidden states of the paths that contain it
             m = tf.gather_nd(outputs, ids)
             m = tf.math.unsorted_segment_sum(m, links, f_['n_links'])
 
+            outputs, path_state, b_path_state = gru_rnn(inputs=node_inputs,
+                                                        initial_state=[path_state, b_path_state],
+                                                        mask=tf.sequence_mask(lens))
+
+            m2 = tf.gather_nd(outputs, ids)
+            m2 = tf.math.unsorted_segment_sum(m2, nodes, f_['n_nodes'])
             # Second message passing: update the link_state
             link_state, _ = self.link_update(m, [link_state])
 
-        # Call the readout ANN and return its predictions
-        r = self.readout(path_state, training=training)
+            node_state, _ = self.node_update(m2, [node_state])
 
+        # Call the readout ANN and return its predictions
+        # print(path_state.shape)
+
+        # ww = tf.gather(node_state, nodes);
+        r = self.readout(path_state, training=training)
+        # print(r.shape)
         return r
+        
 
 
 def r_squared(labels, predictions):
@@ -198,7 +290,8 @@ def model_fn(features, labels, mode, params):
     model = RouteNetModel(params)
 
     # Execute the call function and obtain the predictions.
-    predictions = model(features, training=(mode == tf.estimator.ModeKeys.TRAIN))
+    predictions = model(features, training=(
+        mode == tf.estimator.ModeKeys.TRAIN))
 
     predictions = tf.squeeze(predictions)
 
@@ -250,18 +343,22 @@ def model_fn(features, labels, mode, params):
         )
 
     # If we are performing training.
-    assert mode == tf.estimator.ModeKeys.TRAIN
 
+    assert mode == tf.estimator.ModeKeys.TRAIN
     # Compute the gradients.
     grads = tf.gradients(total_loss, model.trainable_variables)
 
-    summaries = [tf.summary.histogram(var.op.name, var) for var in model.trainable_variables]
-    summaries += [tf.summary.histogram(g.op.name, g) for g in grads if g is not None]
+    summaries = [tf.summary.histogram(var.op.name, var)
+                 for var in model.trainable_variables]
+    summaries += [tf.summary.histogram(g.op.name, g)
+                  for g in grads if g is not None]
 
     # Define an exponential decay schedule.
     decayed_lr = tf.keras.optimizers.schedules.ExponentialDecay(float(params['HYPERPARAMETERS']['learning_rate']),
-                                                                int(params['HYPERPARAMETERS']['decay_steps']),
-                                                                float(params['HYPERPARAMETERS']['decay_rate']),
+                                                                int(params['HYPERPARAMETERS']
+                                                                    ['decay_steps']),
+                                                                float(
+                                                                    params['HYPERPARAMETERS']['decay_rate']),
                                                                 staircase=True)
 
     # Define an Adam optimizer using the defined exponential decay.
