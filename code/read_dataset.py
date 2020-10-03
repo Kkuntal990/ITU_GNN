@@ -236,7 +236,6 @@ def generator(data_dir, shuffle = False):
         # else:
         #     count[1]+=1
 
-
         yield {"bandwith": avg_bw, "packets": pkts_gen,
                "link_capacity": link_capacities,
                "links": link_indices,"node_indices":node_indices,

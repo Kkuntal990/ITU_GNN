@@ -70,6 +70,7 @@ class RouteNetModel(tf.keras.Model):
         self.readout = tf.keras.Sequential([
             tf.keras.layers.Input(
                 shape=int(self.config['HYPERPARAMETERS']['path_state_dim'])),
+            tf.keras.layers.BatchNormalization(),
             tf.keras.layers.Dense(int(self.config['HYPERPARAMETERS']['readout_units']),
                                   activation=tf.nn.selu,
                                   kernel_regularizer=tf.keras.regularizers.l2(
