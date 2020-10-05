@@ -89,11 +89,11 @@ class RouteNetModel(tf.keras.Model):
 
 
         self.attention = tf.keras.Sequential([
-            tf.keras.layers.Masking(
-                mask_value=1e-6, input_shape=(None, int(self.config['HYPERPARAMETERS']['link_state_dim']) + int(self.config['HYPERPARAMETERS']['path_state_dim']))),
-            tf.keras.layers.Dropout(0.4),
+            tf.keras.layers.Input(shape=(None, int(self.config['HYPERPARAMETERS']['link_state_dim']) + int(self.config['HYPERPARAMETERS']['path_state_dim']))),
+            tf.keras.layers.Dropout(0.3),
             tf.keras.layers.Dense(
                 int(self.config['HYPERPARAMETERS']['path_state_dim'])),
+            tf.keras.layers.Dropout(0.3),
             tf.keras.layers.Dense(1,activation='softmax')
         ])
 
